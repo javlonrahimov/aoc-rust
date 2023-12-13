@@ -1,5 +1,7 @@
 advent_of_code::solution!(4);
 
+use std::collections::VecDeque;
+
 struct Card {
     id: u16,
     w_numbers: Vec<i16>,
@@ -39,7 +41,26 @@ pub fn part_one(input: &str) -> Option<u32> {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    None
+    let cards = parse(input);
+    Some(
+        cards
+            .iter()
+            .fold(
+                (0, VecDeque::from([1usize])),
+                |(total, mut multiplier_stack), card| {
+                    let current_card_multiplier = multiplier_stack.pop_front().unwrap_or(1);
+                    let current_wins = card.matches() as usize;
+                    if multiplier_stack.len() < current_wins {
+                        multiplier_stack.extend(vec![1; current_wins - multiplier_stack.len()]);
+                    }
+                    for multiplier in multiplier_stack.iter_mut().take(current_wins) {
+                        *multiplier += current_card_multiplier;
+                    }
+                    (total + current_card_multiplier, multiplier_stack)
+                },
+            )
+            .0 as _,
+    )
 }
 
 fn parse(input: &str) -> Vec<Card> {
@@ -53,7 +74,7 @@ fn parse(input: &str) -> Vec<Card> {
 
         let re = regex::Regex::new(r"\d+|\||").unwrap();
 
-        let numbers = re.find_iter(line);
+        let numbers = re.find_iter(line).peekable();
 
         for ch in numbers {
             if ch.as_str().is_empty() {
@@ -76,8 +97,11 @@ fn parse(input: &str) -> Vec<Card> {
             }
         }
 
+        if w_numbers.is_empty() {
+            continue;
+        }
         cards.push(Card {
-            id: row as _,
+            id: (row + 1) as _,
             w_numbers: w_numbers,
             p_numbers: p_numbers,
         });
